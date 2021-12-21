@@ -22,6 +22,18 @@ var (
 		Name: "status",
 		Help: "Status: PEERING=1, SYNCING=2, READY=3, MINING=4, UNKNOWN=5",
 	})
+	currentConnectedPeers = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "connected_peers",
+		Help: "Current connected peers",
+	})
+	currentCandidatePeers = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "candidate_peers",
+		Help: "Current candidate peers",
+	})
+	currentConnectedSyncNodes = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "connected_sync_nodes",
+		Help: "Current connected sync nodes",
+	})
 )
 
 var (
@@ -37,11 +49,17 @@ func init() {
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(currentBlock)
 	prometheus.MustRegister(currentStatus)
+	prometheus.MustRegister(currentConnectedPeers)
+	prometheus.MustRegister(currentCandidatePeers)
+	prometheus.MustRegister(currentConnectedSyncNodes)
 }
 
 type NodestateResult struct {
-	Status            string `json:"status"`
-	LatestBlockHeight int    `json:"latest_block_height"`
+	Status                     string `json:"status"`
+	LatestBlockHeight          int    `json:"latest_block_height"`
+	NumberOfConnectedPeers     int    `json:"number_of_connected_peers"`
+	NumberOfCandidatePeers     int    `json:"number_of_candidate_peers"`
+	NumberOfConnectedSyncNodes int    `json:"number_of_connected_sync_nodes"`
 }
 
 type RPCNodestateResponse struct {
@@ -83,6 +101,10 @@ func main() {
 		}
 
 		currentBlock.Set(float64(rpc_result.Result.LatestBlockHeight))
+		currentConnectedPeers.Set(float64(rpc_result.Result.NumberOfConnectedPeers))
+		currentCandidatePeers.Set(float64(rpc_result.Result.NumberOfCandidatePeers))
+		currentConnectedSyncNodes.Set(float64(rpc_result.Result.NumberOfConnectedSyncNodes))
+
 		next := promhttp.HandlerFor(
 			prometheus.DefaultGatherer, promhttp.HandlerOpts{})
 		next.ServeHTTP(w, r)
