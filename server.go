@@ -72,19 +72,22 @@ func main() {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Post(*rcp_address, "application/json", bytes.NewBuffer(status_request))
 		if err != nil {
-			log.Fatal("Error getting response. ", err)
+			log.Print("Error getting response. ", err)
+			return
 		}
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal("Error reading response. ", err)
+			log.Print("Error reading response. ", err)
+			return
 		}
 
 		var rpc_result RPCNodestateResponse
 		err = json.Unmarshal(body, &rpc_result)
 		if err != nil {
-			log.Fatal("Unable to unmarshall")
+			log.Print("Unable to unmarshall")
+			return
 		}
 
 		switch rpc_result.Result.Status {
