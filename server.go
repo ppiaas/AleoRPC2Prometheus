@@ -18,6 +18,10 @@ var (
 		Name: "current_block",
 		Help: "Latest Block known by node.",
 	})
+	currentCumulativeWeight = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "current_cumulative_weight",
+		Help: "Latest Cumulative Weight known by node.",
+	})
 	currentStatus = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "status",
 		Help: "Status: PEERING=1, SYNCING=2, READY=3, MINING=4, UNKNOWN=5",
@@ -48,6 +52,7 @@ var (
 func init() {
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(currentBlock)
+	prometheus.MustRegister(currentCumulativeWeight)
 	prometheus.MustRegister(currentStatus)
 	prometheus.MustRegister(currentConnectedPeers)
 	prometheus.MustRegister(currentCandidatePeers)
@@ -57,6 +62,7 @@ func init() {
 type NodestateResult struct {
 	Status                     string `json:"status"`
 	LatestBlockHeight          int    `json:"latest_block_height"`
+	LatestCumulativeWeight     int    `json:"latest_cumulative_weight"`
 	NumberOfConnectedPeers     int    `json:"number_of_connected_peers"`
 	NumberOfCandidatePeers     int    `json:"number_of_candidate_peers"`
 	NumberOfConnectedSyncNodes int    `json:"number_of_connected_sync_nodes"`
@@ -104,6 +110,7 @@ func main() {
 		}
 
 		currentBlock.Set(float64(rpc_result.Result.LatestBlockHeight))
+		currentCumulativeWeight.Set(float64(rpc_result.Result.LatestCumulativeWeight))
 		currentConnectedPeers.Set(float64(rpc_result.Result.NumberOfConnectedPeers))
 		currentCandidatePeers.Set(float64(rpc_result.Result.NumberOfCandidatePeers))
 		currentConnectedSyncNodes.Set(float64(rpc_result.Result.NumberOfConnectedSyncNodes))
