@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,6 +26,10 @@ var (
 	currentConnectedPeers = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "connected_peers",
 		Help: "Current connected peers",
+	})
+	currentSelfConnectedPeers = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "self_connected_peers",
+		Help: "Current connected self peers",
 	})
 	currentCandidatePeers = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "candidate_peers",
@@ -50,9 +55,12 @@ func init() {
 	prometheus.MustRegister(currentBlock)
 	prometheus.MustRegister(currentStatus)
 	prometheus.MustRegister(currentConnectedPeers)
+	prometheus.MustRegister(currentSelfConnectedPeers)
 	prometheus.MustRegister(currentCandidatePeers)
 	prometheus.MustRegister(currentConnectedSyncNodes)
 }
+
+type peers []string
 
 type NodestateResult struct {
 	Status                     string `json:"status"`
@@ -60,6 +68,7 @@ type NodestateResult struct {
 	NumberOfConnectedPeers     int    `json:"number_of_connected_peers"`
 	NumberOfCandidatePeers     int    `json:"number_of_candidate_peers"`
 	NumberOfConnectedSyncNodes int    `json:"number_of_connected_sync_nodes"`
+	ConnectedPeers             peers  `json:"connected_peers"`
 }
 
 type RPCNodestateResponse struct {
@@ -90,21 +99,10 @@ func main() {
 			return
 		}
 
-		switch rpc_result.Result.Status {
-		case "Peering":
-			currentStatus.Set(1)
-		case "Syncing":
-			currentStatus.Set(2)
-		case "Ready":
-			currentStatus.Set(3)
-		case "Mining":
-			currentStatus.Set(4)
-		default:
-			currentStatus.Set(0)
-		}
-
+		currentStatus.Set(getStatus(rpc_result.Result.Status))
 		currentBlock.Set(float64(rpc_result.Result.LatestBlockHeight))
 		currentConnectedPeers.Set(float64(rpc_result.Result.NumberOfConnectedPeers))
+		currentSelfConnectedPeers.Set(getSelfSegments(rpc_result.Result.ConnectedPeers))
 		currentCandidatePeers.Set(float64(rpc_result.Result.NumberOfCandidatePeers))
 		currentConnectedSyncNodes.Set(float64(rpc_result.Result.NumberOfConnectedSyncNodes))
 
@@ -115,5 +113,31 @@ func main() {
 	fmt.Printf("Starting server at port %s\n", *listen_port)
 	if err := http.ListenAndServe(*listen_port, nil); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func getSelfSegments(connectPeers peers) float64 {
+	pat := regexp.MustCompile(`^172.16.*`)
+	count := 0
+	for _, peer := range connectPeers {
+		if pat.MatchString(peer) {
+			count++
+		}
+	}
+	return float64(count)
+}
+
+func getStatus(status string) float64 {
+	switch status {
+	case "Peering":
+		return 1
+	case "Syncing":
+		return 2
+	case "Ready":
+		return 3
+	case "Mining":
+		return 4
+	default:
+		return 5
 	}
 }
